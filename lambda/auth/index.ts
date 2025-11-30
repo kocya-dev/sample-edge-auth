@@ -2,8 +2,8 @@ import { CloudFrontRequestEvent, CloudFrontRequestResult } from "aws-lambda";
 import { Authenticator } from "cognito-at-edge";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
-// SSMクライアント（us-east-1リージョン固定）
-const ssmClient = new SSMClient({ region: "us-east-1" });
+// SSMクライアント（ap-northeast-1リージョン - パラメータが格納されているリージョン）
+const ssmClient = new SSMClient({ region: "ap-northeast-1" });
 
 // パラメータキャッシュ
 let authenticator: Authenticator | null = null;

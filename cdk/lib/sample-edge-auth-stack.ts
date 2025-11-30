@@ -75,7 +75,7 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     authFunction.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["ssm:GetParameter"],
-        resources: [`arn:aws:ssm:us-east-1:${cdk.Aws.ACCOUNT_ID}:parameter/sample-edge-auth/*`],
+        resources: [`arn:aws:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter/sample-edge-auth/*`],
       })
     );
 
