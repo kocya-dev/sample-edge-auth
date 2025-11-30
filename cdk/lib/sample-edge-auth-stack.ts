@@ -4,6 +4,7 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as iam from "aws-cdk-lib/aws-iam";
@@ -61,21 +62,51 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     });
 
     // ===========================================
-    // 3.4 Lambda@Edge関数の定義
+    // 3.4 Lambda@Edge関数の定義（NodejsFunctionでバンドル）
     // ===========================================
     const authFunction = new cloudfront.experimental.EdgeFunction(this, "AuthFunction", {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: "index.handler",
-      code: lambda.Code.fromAsset(path.join(__dirname, "../../lambda/auth/dist")),
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../lambda/auth"), {
+        bundling: {
+          image: lambda.Runtime.NODEJS_20_X.bundlingImage,
+          local: {
+            tryBundle(outputDir: string) {
+              const execSync = require("child_process").execSync;
+              try {
+                execSync(`npx esbuild index.ts --bundle --platform=node --target=node20 --outfile=${outputDir}/index.js --external:@aws-sdk/*`, {
+                  cwd: path.join(__dirname, "../../lambda/auth"),
+                  stdio: "inherit",
+                });
+                return true;
+              } catch {
+                return false;
+              }
+            },
+          },
+          command: [
+            "bash",
+            "-c",
+            [
+              "npm install",
+              "npm install esbuild",
+              "npx esbuild index.ts --bundle --platform=node --target=node20 --outfile=/asset-output/index.js --external:@aws-sdk/*",
+            ].join(" && "),
+          ],
+          user: "root",
+        },
+      }),
       timeout: cdk.Duration.seconds(5),
       memorySize: 128,
     });
 
     // Lambda@EdgeにSSM Parameter Store読み取り権限を付与
+    // Lambda@Edgeはus-east-1で実行されるが、SSMパラメータはap-northeast-1に存在するため
+    // 明示的にap-northeast-1リージョンを指定する
     authFunction.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["ssm:GetParameter"],
-        resources: [`arn:aws:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter/sample-edge-auth/*`],
+        resources: [`arn:aws:ssm:ap-northeast-1:${cdk.Aws.ACCOUNT_ID}:parameter/sample-edge-auth/*`],
       })
     );
 
