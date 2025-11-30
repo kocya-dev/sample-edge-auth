@@ -3,4 +3,5 @@ task.md
 dist
 node_modules 
 cdk.out
+cdk.json
 
