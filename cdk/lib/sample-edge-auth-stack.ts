@@ -165,9 +165,11 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     });
 
     // ===========================================
-    // 3.2 SSM Parameter Store の定義（us-east-1）
+    // 3.2 SSM Parameter Store の定義（スタックのデプロイ先リージョン）
     // ===========================================
-    // Lambda@Edgeはus-east-1で実行されるため、パラメータもus-east-1に作成
+    // これらのパラメータは、CDK スタックをデプロイしたリージョンに作成されます。
+    // Lambda@Edge 側（lambda/auth/index.ts）の SSM クライアントが参照するリージョンと
+    // 必ず一致させてください（現状は ap-northeast-1 を前提にしています）。
     const cognitoRegion = new ssm.StringParameter(this, "CognitoRegion", {
       parameterName: "/sample-edge-auth/cognito-region",
       stringValue: cdk.Aws.REGION,

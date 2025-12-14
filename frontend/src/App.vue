@@ -6,6 +6,10 @@
   <div class="container">
     <h1>🎉 ログイン成功</h1>
     <p>cognito-at-edge による認証が正常に完了しました。</p>
+
+    <div class="actions">
+      <a class="signout" href="/signout">Sign out</a>
+    </div>
     <div class="info">
       <p>この画面が表示されている場合、以下が正常に動作しています：</p>
       <ul>
@@ -35,6 +39,24 @@ h1 {
 p {
   color: #555;
   line-height: 1.6;
+}
+
+.actions {
+  margin-top: 18px;
+}
+
+.signout {
+  display: inline-block;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #b0d4f1;
+  background-color: #f0f8ff;
+  color: #2c3e50;
+  text-decoration: none;
+}
+
+.signout:hover {
+  filter: brightness(0.98);
 }
 
 .info {
