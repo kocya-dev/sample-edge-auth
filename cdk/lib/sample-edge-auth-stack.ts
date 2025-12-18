@@ -3,6 +3,8 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
+import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
+import * as apigwv2Integrations from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as ssm from "aws-cdk-lib/aws-ssm";
@@ -111,8 +113,40 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     );
 
     // ===========================================
+    // API Gateway + Backend Lambda（Cookie内 accessToken の有無で 200/403）
+    // ===========================================
+    const backendFunction = new lambdaNodejs.NodejsFunction(this, "BackendFunction", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: path.join(__dirname, "../../lambda/backend/index.ts"),
+      handler: "handler",
+      timeout: cdk.Duration.seconds(5),
+      memorySize: 128,
+    });
+
+    const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
+      apiName: "sample-edge-auth-api",
+    });
+
+    const backendIntegration = new apigwv2Integrations.HttpLambdaIntegration("BackendIntegration", backendFunction);
+    httpApi.addRoutes({
+      path: "/api",
+      methods: [apigwv2.HttpMethod.GET],
+      integration: backendIntegration,
+    });
+    httpApi.addRoutes({
+      path: "/api/ping",
+      methods: [apigwv2.HttpMethod.GET],
+      integration: backendIntegration,
+    });
+
+    // ===========================================
     // 3.5 CloudFront Distributionの定義
     // ===========================================
+    const apiDomainName = cdk.Fn.select(2, cdk.Fn.split("/", httpApi.apiEndpoint));
+    const apiOrigin = new origins.HttpOrigin(apiDomainName, {
+      protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+    });
+
     const distribution = new cloudfront.Distribution(this, "Distribution", {
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket),
@@ -133,12 +167,17 @@ export class SampleEdgeAuthStack extends cdk.Stack {
           responseHttpStatus: 200,
           responsePagePath: "/index.html",
         },
-        {
-          httpStatus: 403,
-          responseHttpStatus: 200,
-          responsePagePath: "/index.html",
-        },
       ],
+      additionalBehaviors: {
+        "/api*": {
+          origin: apiOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          // backend Lambda が Cookie を参照するため
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+        },
+      },
     });
 
     // ===========================================
@@ -206,6 +245,11 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     new cdk.CfnOutput(this, "CloudFrontURL", {
       value: cloudFrontUrl,
       description: "CloudFront Distribution URL",
+    });
+
+    new cdk.CfnOutput(this, "ApiEndpoint", {
+      value: httpApi.apiEndpoint,
+      description: "HTTP API endpoint (direct). Prefer calling via CloudFront /api* for this sample.",
     });
 
     new cdk.CfnOutput(this, "UserPoolIdOutput", {
