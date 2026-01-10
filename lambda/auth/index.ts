@@ -44,14 +44,21 @@ async function initAuthenticator(event: CloudFrontRequestEvent): Promise<Authent
   const { request } = event.Records[0].cf;
   const cfDomain = request.headers.host[0].value;
 
+  const logoutReturnTo = `https://${cfDomain}/`;
+  const cognitoLogoutUrl = `https://${cachedAuthParams.userPoolDomain}/logout?client_id=${cachedAuthParams.userPoolAppId}&logout_uri=${encodeURIComponent(
+    logoutReturnTo
+  )}`;
+
   // logoutRedirectUri は Host に依存するため、リクエスト毎に Authenticator を生成する
   return new Authenticator({
     ...cachedAuthParams,
     logoutConfiguration: {
       // /signout へのアクセスをログアウトとして扱う
       logoutUri: "/signout",
-      // ログアウト後は同一オリジンのルートへ戻す（Cookieが消えるので再アクセス時は再認証へ）
-      logoutRedirectUri: `https://${cfDomain}`,
+      // Cookie を削除した後、Cognito Hosted UI の /logout に遷移させて
+      // Cognito 側セッションもクリアする（これをしないと再ログイン時に UI が表示されず
+      // そのまま code 発行→Cookie 再取得、となることがある）
+      logoutRedirectUri: cognitoLogoutUrl,
     },
     cookieExpirationDays: 1,
     httpOnly: true,
