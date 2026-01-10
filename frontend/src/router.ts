@@ -7,6 +7,14 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", name: "home", component: HomePage },
-    { path: "/testPage", name: "testPage", component: TestPage },
+    {
+      path: "/testPage",
+      alias: "/test-page",
+      name: "testPage",
+      component: TestPage,
+      props: (route) => ({
+        message: typeof route.query.message === "string" ? route.query.message : "",
+      }),
+    },
   ],
 });

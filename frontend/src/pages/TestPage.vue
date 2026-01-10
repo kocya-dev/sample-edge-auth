@@ -1,10 +1,15 @@
 <script setup lang="ts">
 // テスト用ページ
+
+defineProps<{ message: string }>();
 </script>
 
 <template>
   <div class="container">
     <h1>testPage</h1>
+
+    <p class="message">router message: {{ message || "(empty)" }}</p>
+
     <div class="actions">
       <RouterLink class="back" to="/">戻る</RouterLink>
     </div>
@@ -23,6 +28,11 @@
 h1 {
   color: #2c3e50;
   margin-bottom: 20px;
+}
+
+.message {
+  color: #555;
+  line-height: 1.6;
 }
 
 .actions {
