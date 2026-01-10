@@ -1,4 +1,5 @@
 <script setup lang="ts">
+defineProps<{ message: string }>();
 // テスト用ページ
 
 defineProps<{ message: string }>();
@@ -7,6 +8,8 @@ defineProps<{ message: string }>();
 <template>
   <div class="container">
     <h1>testPage</h1>
+
+    <p v-if="message" class="message">message: {{ message }}</p>
 
     <p class="message">router message: {{ message || "(empty)" }}</p>
 
@@ -37,6 +40,17 @@ h1 {
 
 .actions {
   margin-top: 18px;
+}
+
+.message {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #b0d4f1;
+  background-color: #f0f8ff;
+  color: #2c3e50;
+  text-align: left;
+  word-break: break-word;
 }
 
 .back {

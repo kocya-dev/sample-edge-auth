@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
+    <title>Redirecting...</title>
+  </head>
+  <body>
+    <noscript>このページは JavaScript が必要です。</noscript>
+    <script>
+      (function () {
+        try {
+          var search = window.location.search || "";
+          var param = search.startsWith("?") ? search.slice(1) : search;
+          if (param) {
+            window.localStorage.setItem("param", param);
+          } else {
+            window.localStorage.removeItem("param");
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        // SPA 本体へ遷移
+        window.location.replace("/index.html");
+      })();
+    </script>
+  </body>
+</html>
