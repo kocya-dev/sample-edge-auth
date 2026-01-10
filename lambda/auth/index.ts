@@ -41,8 +41,7 @@ async function initAuthenticator(event: CloudFrontRequestEvent): Promise<Authent
     };
   }
 
-  const { request } = event.Records[0].cf;
-  const cfDomain = request.headers.host[0].value;
+  const cfDomain = event.Records[0].cf.request.headers.host[0].value;
 
   const logoutReturnTo = `https://${cfDomain}/`;
   const cognitoLogoutUrl = `https://${cachedAuthParams.userPoolDomain}/logout?client_id=${cachedAuthParams.userPoolAppId}&logout_uri=${encodeURIComponent(
@@ -69,6 +68,13 @@ async function initAuthenticator(event: CloudFrontRequestEvent): Promise<Authent
 
 // Lambda@Edge ハンドラー
 export const handler = async (event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> => {
+  const { request } = event.Records[0].cf;
+
+  // リダイレクト専用ページは認証対象外（ここに到達できないと param 保存ができない）
+  if (request.uri === "/redirect.html") {
+    return request;
+  }
+
   const auth = await initAuthenticator(event);
   return auth.handle(event);
 };
