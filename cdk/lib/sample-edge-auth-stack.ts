@@ -193,8 +193,8 @@ export class SampleEdgeAuthStack extends cdk.Stack {
           authorizationCodeGrant: true,
         },
         scopes: [cognito.OAuthScope.EMAIL, cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],
-        callbackUrls: [cloudFrontUrl, `${cloudFrontUrl}/`],
-        logoutUrls: [cloudFrontUrl, `${cloudFrontUrl}/`],
+        callbackUrls: [cloudFrontUrl, `${cloudFrontUrl}/`, "https://localhost:5173/"],
+        logoutUrls: [cloudFrontUrl, `${cloudFrontUrl}/`, "https://localhost:5173/"],
       },
       authFlows: {
         userPassword: true,

@@ -1,7 +1,8 @@
-spec.md
-task.md
+spec*.md
+task*.md
+plan*.md
 dist
 node_modules 
 cdk.out
 cdk.json
-
+.env
