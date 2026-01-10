@@ -7,6 +7,7 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", name: "home", component: HomePage },
+    { path: "/index.html", name: "home", component: HomePage },
     {
       path: "/testPage",
       alias: "/test-page",

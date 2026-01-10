@@ -1,5 +1,4 @@
 <script setup lang="ts">
-defineProps<{ message: string }>();
 // テスト用ページ
 
 defineProps<{ message: string }>();
