@@ -1,5 +1,14 @@
 <script setup lang="ts">
 // トップページ（ログイン成功画面）
+
+async function callApi() {
+  try {
+    const res = await fetch("/api", { method: "GET", credentials: "include" });
+    alert(`Status: ${res.status}`);
+  } catch (e) {
+    alert(`通信エラー: ${e}`);
+  }
+}
 </script>
 
 <template>
@@ -9,6 +18,7 @@
 
     <div class="actions">
       <RouterLink class="nav" to="/testPage">testPage</RouterLink>
+      <button class="nav" @click="callApi">API Call</button>
       <a class="signout" href="/signout">Sign out</a>
     </div>
 
