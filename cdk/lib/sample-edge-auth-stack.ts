@@ -148,6 +148,31 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     });
 
     // ===========================================
+    // API Gateway Access Logging（CloudWatch Logs）
+    // ===========================================
+    const apiAccessLogGroup = new logs.LogGroup(this, "ApiAccessLogGroup", {
+      logGroupName: "/aws/apigateway/sample-edge-auth-api",
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const cfnDefaultStage = httpApi.defaultStage?.node.defaultChild as apigwv2.CfnStage;
+    cfnDefaultStage.accessLogSettings = {
+      destinationArn: apiAccessLogGroup.logGroupArn,
+      format: JSON.stringify({
+        requestId: "$context.requestId",
+        ip: "$context.identity.sourceIp",
+        requestTime: "$context.requestTime",
+        httpMethod: "$context.httpMethod",
+        routeKey: "$context.routeKey",
+        status: "$context.status",
+        protocol: "$context.protocol",
+        responseLength: "$context.responseLength",
+        integrationErrorMessage: "$context.integrationErrorMessage",
+      }),
+    };
+
+    // ===========================================
     // 3.5 CloudFront Distributionの定義
     // ===========================================
     const apiDomainName = cdk.Fn.select(2, cdk.Fn.split("/", httpApi.apiEndpoint));
