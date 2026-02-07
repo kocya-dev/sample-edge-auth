@@ -45,7 +45,7 @@ async function initAuthenticator(event: CloudFrontRequestEvent): Promise<Authent
 
   const logoutReturnTo = `https://${cfDomain}/`;
   const cognitoLogoutUrl = `https://${cachedAuthParams.userPoolDomain}/logout?client_id=${cachedAuthParams.userPoolAppId}&logout_uri=${encodeURIComponent(
-    logoutReturnTo
+    logoutReturnTo,
   )}`;
 
   // logoutRedirectUri は Host に依存するため、リクエスト毎に Authenticator を生成する
@@ -63,6 +63,7 @@ async function initAuthenticator(event: CloudFrontRequestEvent): Promise<Authent
     httpOnly: true,
     sameSite: "Lax",
     logLevel: "warn",
+    cookiePath: "/",
   });
 }
 
@@ -76,5 +77,7 @@ export const handler = async (event: CloudFrontRequestEvent): Promise<CloudFront
   }
 
   const auth = await initAuthenticator(event);
-  return auth.handle(event);
+  const res = auth.handle(event);
+  console.log("Authenticator result:", JSON.stringify(res, null, 2));
+  return res;
 };

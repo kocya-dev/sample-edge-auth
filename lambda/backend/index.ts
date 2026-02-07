@@ -3,6 +3,7 @@ import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 const ACCESS_TOKEN_COOKIE_NAME = "accessToken";
 
 function hasAccessTokenCookie(cookieHeader: string | undefined): boolean {
+  console.log("Checking cookie header:", cookieHeader);
   if (!cookieHeader) return false;
 
   // Cookie: a=b; accessToken=xxx; c=d
@@ -31,7 +32,7 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
   const ok = hasAccessTokenCookie(cookieHeader);
 
   return {
-    statusCode: ok ? 200 : 403,
+    statusCode: ok ? 200 : 400,
     headers: {
       "content-type": "application/json",
     },
