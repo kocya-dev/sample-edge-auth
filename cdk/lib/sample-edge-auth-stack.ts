@@ -10,6 +10,7 @@ import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
 import * as path from "path";
 
@@ -109,18 +110,25 @@ export class SampleEdgeAuthStack extends cdk.Stack {
       new iam.PolicyStatement({
         actions: ["ssm:GetParameter"],
         resources: [`arn:aws:ssm:ap-northeast-1:${cdk.Aws.ACCOUNT_ID}:parameter/sample-edge-auth/*`],
-      })
+      }),
     );
 
     // ===========================================
     // API Gateway + Backend Lambda（Cookie内 accessToken の有無で 200/403）
     // ===========================================
+    const backendLogGroup = new logs.LogGroup(this, "BackendLogGroup", {
+      logGroupName: "/aws/lambda/sample-edge-auth-backend",
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     const backendFunction = new lambdaNodejs.NodejsFunction(this, "BackendFunction", {
       runtime: lambda.Runtime.NODEJS_20_X,
       entry: path.join(__dirname, "../../lambda/backend/index.ts"),
       handler: "handler",
       timeout: cdk.Duration.seconds(5),
       memorySize: 128,
+      logGroup: backendLogGroup,
     });
 
     const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
