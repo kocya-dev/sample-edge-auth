@@ -118,7 +118,7 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     // ===========================================
     const backendLogGroup = new logs.LogGroup(this, "BackendLogGroup", {
       logGroupName: "/aws/lambda/sample-edge-auth-backend",
-      retention: logs.RetentionDays.ONE_MONTH,
+      retention: logs.RetentionDays.TWO_WEEKS,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
@@ -128,6 +128,9 @@ export class SampleEdgeAuthStack extends cdk.Stack {
       handler: "handler",
       timeout: cdk.Duration.seconds(5),
       memorySize: 128,
+      environment: {
+        LOG_LEVEL: "INFO",
+      },
       logGroup: backendLogGroup,
     });
 
@@ -152,7 +155,7 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     // ===========================================
     const apiAccessLogGroup = new logs.LogGroup(this, "ApiAccessLogGroup", {
       logGroupName: "/aws/apigateway/sample-edge-auth-api",
-      retention: logs.RetentionDays.ONE_MONTH,
+      retention: logs.RetentionDays.TWO_WEEKS,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
@@ -209,6 +212,12 @@ export class SampleEdgeAuthStack extends cdk.Stack {
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
           // backend Lambda が Cookie を参照するため
           originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+          edgeLambdas: [
+            {
+              functionVersion: authFunction.currentVersion,
+              eventType: cloudfront.LambdaEdgeEventType.VIEWER_REQUEST,
+            },
+          ],
         },
       },
     });
