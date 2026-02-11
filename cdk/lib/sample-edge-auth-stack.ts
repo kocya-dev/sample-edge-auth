@@ -5,6 +5,7 @@ import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as apigwv2Integrations from "aws-cdk-lib/aws-apigatewayv2-integrations";
+import * as apigwv2Authorizers from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as ssm from "aws-cdk-lib/aws-ssm";
@@ -139,16 +140,6 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     });
 
     const backendIntegration = new apigwv2Integrations.HttpLambdaIntegration("BackendIntegration", backendFunction);
-    httpApi.addRoutes({
-      path: "/api",
-      methods: [apigwv2.HttpMethod.GET],
-      integration: backendIntegration,
-    });
-    httpApi.addRoutes({
-      path: "/api/ping",
-      methods: [apigwv2.HttpMethod.GET],
-      integration: backendIntegration,
-    });
 
     // ===========================================
     // API Gateway Access Logging（CloudWatch Logs）
@@ -257,6 +248,47 @@ export class SampleEdgeAuthStack extends cdk.Stack {
         userSrp: true,
       },
       supportedIdentityProviders: [cognito.UserPoolClientIdentityProvider.COGNITO],
+    });
+
+    // ===========================================
+    // Lambda Authorizer（Cookie内 Cognito トークンを検証）
+    // ===========================================
+    const authorizerLogGroup = new logs.LogGroup(this, "AuthorizerLogGroup", {
+      logGroupName: "/aws/lambda/sample-edge-auth-authorizer",
+      retention: logs.RetentionDays.TWO_WEEKS,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const authorizerFunction = new lambdaNodejs.NodejsFunction(this, "AuthorizerFunction", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      entry: path.join(__dirname, "../../lambda/auth/authorizer/index.ts"),
+      handler: "handler",
+      timeout: cdk.Duration.seconds(5),
+      memorySize: 128,
+      environment: {
+        USER_POOL_ID: userPool.userPoolId,
+        CLIENT_ID: userPoolClient.userPoolClientId,
+      },
+      logGroup: authorizerLogGroup,
+    });
+
+    const lambdaAuthorizer = new apigwv2Authorizers.HttpLambdaAuthorizer("CookieAuthorizer", authorizerFunction, {
+      responseTypes: [apigwv2Authorizers.HttpLambdaResponseType.SIMPLE],
+      identitySource: [],
+      resultsCacheTtl: cdk.Duration.seconds(0),
+    });
+
+    httpApi.addRoutes({
+      path: "/api",
+      methods: [apigwv2.HttpMethod.GET],
+      integration: backendIntegration,
+      authorizer: lambdaAuthorizer,
+    });
+    httpApi.addRoutes({
+      path: "/api/ping",
+      methods: [apigwv2.HttpMethod.GET],
+      integration: backendIntegration,
+      authorizer: lambdaAuthorizer,
     });
 
     // ===========================================
