@@ -202,7 +202,7 @@ export class SampleEdgeAuthStack extends cdk.Stack {
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
           // backend Lambda が Cookie を参照するため
-          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           edgeLambdas: [
             {
               functionVersion: authFunction.currentVersion,
