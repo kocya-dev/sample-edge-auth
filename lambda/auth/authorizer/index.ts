@@ -66,6 +66,25 @@ function extractCookies(event: APIGatewayRequestAuthorizerEventV2): Record<strin
   return {};
 }
 
+function findAccessToken(cookies: Record<string, string>): string | undefined {
+  const lastAuthUserKey = `CognitoIdentityServiceProvider.${CLIENT_ID}.LastAuthUser`;
+  const lastAuthUser = cookies[lastAuthUserKey];
+
+  if (lastAuthUser) {
+    const accessTokenKey = `CognitoIdentityServiceProvider.${CLIENT_ID}.${lastAuthUser}.accessToken`;
+    return cookies[accessTokenKey];
+  }
+
+  const prefix = `CognitoIdentityServiceProvider.${CLIENT_ID}.`;
+  for (const [key, value] of Object.entries(cookies)) {
+    if (key.startsWith(prefix) && key.endsWith(".accessToken") && value) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * Lambda Authorizer ハンドラ
  *
@@ -85,18 +104,8 @@ export const handler = async (event: APIGatewayRequestAuthorizerEventV2): Promis
   try {
     const cookies = extractCookies(event);
 
-    // 1. LastAuthUser Cookie からユーザー名を取得
-    const lastAuthUserKey = `CognitoIdentityServiceProvider.${CLIENT_ID}.LastAuthUser`;
-    const lastAuthUser = cookies[lastAuthUserKey];
-
-    if (!lastAuthUser) {
-      console.log("LastAuthUser cookie not found");
-      return deny();
-    }
-
-    // 2. アクセストークン Cookie を取得
-    const accessTokenKey = `CognitoIdentityServiceProvider.${CLIENT_ID}.${lastAuthUser}.accessToken`;
-    const accessToken = cookies[accessTokenKey];
+    // 1. アクセストークン Cookie を取得
+    const accessToken = findAccessToken(cookies);
 
     if (!accessToken) {
       console.log("accessToken cookie not found");

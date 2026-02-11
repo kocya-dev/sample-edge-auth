@@ -274,7 +274,7 @@ export class SampleEdgeAuthStack extends cdk.Stack {
 
     const lambdaAuthorizer = new apigwv2Authorizers.HttpLambdaAuthorizer("CookieAuthorizer", authorizerFunction, {
       responseTypes: [apigwv2Authorizers.HttpLambdaResponseType.SIMPLE],
-      identitySource: [],
+      identitySource: ["$request.header.Cookie"],
       resultsCacheTtl: cdk.Duration.seconds(0),
     });
 
