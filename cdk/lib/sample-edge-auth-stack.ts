@@ -3,9 +3,7 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
-import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
-import * as apigwv2Integrations from "aws-cdk-lib/aws-apigatewayv2-integrations";
-import * as apigwv2Authorizers from "aws-cdk-lib/aws-apigatewayv2-authorizers";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as ssm from "aws-cdk-lib/aws-ssm";
@@ -135,11 +133,7 @@ export class SampleEdgeAuthStack extends cdk.Stack {
       logGroup: backendLogGroup,
     });
 
-    const httpApi = new apigwv2.HttpApi(this, "HttpApi", {
-      apiName: "sample-edge-auth-api",
-    });
-
-    const backendIntegration = new apigwv2Integrations.HttpLambdaIntegration("BackendIntegration", backendFunction);
+    const backendIntegration = new apigateway.LambdaIntegration(backendFunction);
 
     // ===========================================
     // API Gateway Access Logging（CloudWatch Logs）
@@ -150,28 +144,38 @@ export class SampleEdgeAuthStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    const cfnDefaultStage = httpApi.defaultStage?.node.defaultChild as apigwv2.CfnStage;
-    cfnDefaultStage.accessLogSettings = {
-      destinationArn: apiAccessLogGroup.logGroupArn,
-      format: JSON.stringify({
-        requestId: "$context.requestId",
-        ip: "$context.identity.sourceIp",
-        requestTime: "$context.requestTime",
-        httpMethod: "$context.httpMethod",
-        routeKey: "$context.routeKey",
-        status: "$context.status",
-        protocol: "$context.protocol",
-        responseLength: "$context.responseLength",
-        integrationErrorMessage: "$context.integrationErrorMessage",
-      }),
-    };
+    const apiStageName = "prod";
+
+    const restApi = new apigateway.RestApi(this, "RestApi", {
+      restApiName: "sample-edge-auth-api",
+      deployOptions: {
+        stageName: apiStageName,
+        accessLogDestination: new apigateway.LogGroupLogDestination(apiAccessLogGroup),
+        accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields({
+          caller: false,
+          httpMethod: true,
+          ip: true,
+          protocol: true,
+          requestTime: true,
+          resourcePath: true,
+          responseLength: true,
+          status: true,
+          user: false,
+        }),
+        loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        dataTraceEnabled: false,
+        metricsEnabled: true,
+      },
+      cloudWatchRole: true,
+    });
 
     // ===========================================
     // 3.5 CloudFront Distributionの定義
     // ===========================================
-    const apiDomainName = cdk.Fn.select(2, cdk.Fn.split("/", httpApi.apiEndpoint));
+    const apiDomainName = `${restApi.restApiId}.execute-api.${cdk.Aws.REGION}.${cdk.Aws.URL_SUFFIX}`;
     const apiOrigin = new origins.HttpOrigin(apiDomainName, {
       protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+      originPath: `/${apiStageName}`,
     });
 
     const distribution = new cloudfront.Distribution(this, "Distribution", {
@@ -272,23 +276,22 @@ export class SampleEdgeAuthStack extends cdk.Stack {
       logGroup: authorizerLogGroup,
     });
 
-    const lambdaAuthorizer = new apigwv2Authorizers.HttpLambdaAuthorizer("CookieAuthorizer", authorizerFunction, {
-      responseTypes: [apigwv2Authorizers.HttpLambdaResponseType.SIMPLE],
-      identitySource: ["$request.header.Cookie"],
+    const lambdaAuthorizer = new apigateway.RequestAuthorizer(this, "CookieAuthorizer", {
+      handler: authorizerFunction,
+      identitySources: [apigateway.IdentitySource.header("Cookie")],
       resultsCacheTtl: cdk.Duration.seconds(0),
     });
 
-    httpApi.addRoutes({
-      path: "/api",
-      methods: [apigwv2.HttpMethod.GET],
-      integration: backendIntegration,
+    const apiResource = restApi.root.addResource("api");
+    apiResource.addMethod("GET", backendIntegration, {
       authorizer: lambdaAuthorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
     });
-    httpApi.addRoutes({
-      path: "/api/ping",
-      methods: [apigwv2.HttpMethod.GET],
-      integration: backendIntegration,
+
+    const pingResource = apiResource.addResource("ping");
+    pingResource.addMethod("GET", backendIntegration, {
       authorizer: lambdaAuthorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
     });
 
     // ===========================================
@@ -336,8 +339,8 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, "ApiEndpoint", {
-      value: httpApi.apiEndpoint,
-      description: "HTTP API endpoint (direct). Prefer calling via CloudFront /api* for this sample.",
+      value: `https://${apiDomainName}/${apiStageName}/`,
+      description: "REST API endpoint (direct). Prefer calling via CloudFront /api* for this sample.",
     });
 
     new cdk.CfnOutput(this, "UserPoolIdOutput", {
