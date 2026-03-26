@@ -20,6 +20,9 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     const backendRequestTemplate = `{
   "resourcePath": "$context.resourcePath",
   "httpMethod": "$context.httpMethod",
+  "headers": {
+    "origin": "$util.escapeJavaScript($input.params().header.get('Origin'))"
+  },
   "authorizer": {
     "sub": "$context.authorizer.sub",
     "username": "$context.authorizer.username"
