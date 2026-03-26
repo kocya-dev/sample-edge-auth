@@ -1,19 +1,34 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+type BackendEvent = {
+  resourcePath?: string;
+  httpMethod?: string;
+  authorizer?: {
+    sub?: string;
+    username?: string;
+  };
+};
 
-export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  const authorizerContext = event.requestContext.authorizer;
+type BackendResponse = {
+  message: string;
+  request: {
+    resourcePath: string;
+    httpMethod: string;
+  };
+  user: {
+    sub: string;
+    username: string;
+  };
+};
 
+export const handler = async (event: BackendEvent): Promise<BackendResponse> => {
   return {
-    statusCode: 200,
-    headers: {
-      "content-type": "application/json",
+    message: "Hello from Lambda backend!",
+    request: {
+      resourcePath: event.resourcePath ?? "",
+      httpMethod: event.httpMethod ?? "",
     },
-    body: JSON.stringify({
-      message: "Hello from Lambda backend!",
-      user: {
-        sub: (authorizerContext?.sub as string | undefined) ?? "",
-        username: (authorizerContext?.username as string | undefined) ?? "",
-      },
-    }),
+    user: {
+      sub: event.authorizer?.sub ?? "",
+      username: event.authorizer?.username ?? "",
+    },
   };
 };

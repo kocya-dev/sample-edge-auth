@@ -17,6 +17,46 @@ export class SampleEdgeAuthStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const backendRequestTemplate = `{
+  "resourcePath": "$context.resourcePath",
+  "httpMethod": "$context.httpMethod",
+  "authorizer": {
+    "sub": "$context.authorizer.sub",
+    "username": "$context.authorizer.username"
+  }
+}`;
+
+    const backendIntegration = (handler: lambda.IFunction) =>
+      new apigateway.LambdaIntegration(handler, {
+        proxy: false,
+        passthroughBehavior: apigateway.PassthroughBehavior.WHEN_NO_TEMPLATES,
+        requestTemplates: {
+          "application/json": backendRequestTemplate,
+        },
+        integrationResponses: [
+          {
+            statusCode: "200",
+            responseParameters: {
+              "method.response.header.Content-Type": "'application/json'",
+            },
+            responseTemplates: {
+              "application/json": "$input.body",
+            },
+          },
+        ],
+      });
+
+    const backendMethodOptions: apigateway.MethodOptions = {
+      methodResponses: [
+        {
+          statusCode: "200",
+          responseParameters: {
+            "method.response.header.Content-Type": true,
+          },
+        },
+      ],
+    };
+
     // ===========================================
     // 3.1 Cognito User Pool の定義
     // ===========================================
@@ -133,7 +173,7 @@ export class SampleEdgeAuthStack extends cdk.Stack {
       logGroup: backendLogGroup,
     });
 
-    const backendIntegration = new apigateway.LambdaIntegration(backendFunction);
+    const backendLambdaIntegration = backendIntegration(backendFunction);
 
     // ===========================================
     // API Gateway Access Logging（CloudWatch Logs）
@@ -283,15 +323,17 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     });
 
     const apiResource = restApi.root.addResource("api");
-    apiResource.addMethod("GET", backendIntegration, {
+    apiResource.addMethod("GET", backendLambdaIntegration, {
       authorizer: lambdaAuthorizer,
       authorizationType: apigateway.AuthorizationType.CUSTOM,
+      ...backendMethodOptions,
     });
 
     const pingResource = apiResource.addResource("ping");
-    pingResource.addMethod("GET", backendIntegration, {
+    pingResource.addMethod("GET", backendLambdaIntegration, {
       authorizer: lambdaAuthorizer,
       authorizationType: apigateway.AuthorizationType.CUSTOM,
+      ...backendMethodOptions,
     });
 
     // ===========================================

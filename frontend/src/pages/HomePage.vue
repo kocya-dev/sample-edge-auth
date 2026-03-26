@@ -3,7 +3,13 @@
 
 async function callApi() {
   try {
-    const res = await fetch("/api", { method: "GET", credentials: "include" });
+    const res = await fetch("/api", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     alert(`Status: ${res.status}`);
   } catch (e) {
     alert(`通信エラー: ${e}`);
