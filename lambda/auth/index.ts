@@ -61,7 +61,7 @@ async function initAuthenticator(event: CloudFrontRequestEvent): Promise<Authent
     },
     cookieExpirationDays: 1,
     httpOnly: true,
-    sameSite: "Lax",
+    sameSite: "None",
     logLevel: "warn",
     cookiePath: "/",
   });
@@ -70,6 +70,10 @@ async function initAuthenticator(event: CloudFrontRequestEvent): Promise<Authent
 // Lambda@Edge ハンドラー
 export const handler = async (event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> => {
   const { request } = event.Records[0].cf;
+
+  if (request.method === "OPTIONS") {
+    return request;
+  }
 
   // リダイレクト専用ページは認証対象外（ここに到達できないと param 保存ができない）
   if (request.uri === "/redirect.html") {

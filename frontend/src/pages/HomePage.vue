@@ -1,16 +1,28 @@
 <script setup lang="ts">
 // トップページ（ログイン成功画面）
 
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ?? "";
+
+function buildApiUrl(path: string): string {
+  if (!apiBaseUrl) {
+    return path;
+  }
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${apiBaseUrl}${normalizedPath}`;
+}
+
 async function callApi() {
   try {
-    const res = await fetch("/api", {
+    const res = await fetch(buildApiUrl("/api"), {
       method: "GET",
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
     });
-    alert(`Status: ${res.status}`);
+    const body = await res.text();
+    alert(`Status: ${res.status}\nBody: ${body}`);
   } catch (e) {
     alert(`通信エラー: ${e}`);
   }

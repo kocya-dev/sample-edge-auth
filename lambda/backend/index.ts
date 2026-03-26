@@ -11,6 +11,7 @@ type BackendEvent = {
 };
 
 type BackendResponse = {
+  accessControlAllowOrigin: string;
   message: string;
   request: {
     resourcePath: string;
@@ -23,9 +24,25 @@ type BackendResponse = {
   };
 };
 
+function resolveAllowedOrigin(origin?: string): string {
+  const cloudFrontUrl = process.env.CLOUD_FRONT_URL ?? "";
+
+  if (!origin) {
+    return cloudFrontUrl;
+  }
+
+  if (origin.startsWith("http://localhost") || origin.startsWith("https://localhost")) {
+    return origin;
+  }
+
+  return cloudFrontUrl;
+}
+
 export const handler = async (event: BackendEvent): Promise<BackendResponse> => {
   console.log("Received event:", JSON.stringify(event, null, 2));
+
   return {
+    accessControlAllowOrigin: resolveAllowedOrigin(event.headers?.origin),
     message: "Hello from Lambda backend!",
     request: {
       resourcePath: event.resourcePath ?? "",

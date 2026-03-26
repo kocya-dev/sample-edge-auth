@@ -40,7 +40,12 @@ export class SampleEdgeAuthStack extends cdk.Stack {
           {
             statusCode: "200",
             responseParameters: {
+              "method.response.header.Access-Control-Allow-Credentials": "'true'",
+              "method.response.header.Access-Control-Allow-Headers": "'Content-Type'",
+              "method.response.header.Access-Control-Allow-Methods": "'GET,OPTIONS'",
+              "method.response.header.Access-Control-Allow-Origin": "integration.response.body.accessControlAllowOrigin",
               "method.response.header.Content-Type": "'application/json'",
+              "method.response.header.Vary": "'Origin'",
             },
             responseTemplates: {
               "application/json": "$input.body",
@@ -54,7 +59,12 @@ export class SampleEdgeAuthStack extends cdk.Stack {
         {
           statusCode: "200",
           responseParameters: {
+            "method.response.header.Access-Control-Allow-Credentials": true,
+            "method.response.header.Access-Control-Allow-Headers": true,
+            "method.response.header.Access-Control-Allow-Methods": true,
+            "method.response.header.Access-Control-Allow-Origin": true,
             "method.response.header.Content-Type": true,
+            "method.response.header.Vary": true,
           },
         },
       ],
@@ -265,6 +275,8 @@ export class SampleEdgeAuthStack extends cdk.Stack {
     // ===========================================
     const cloudFrontUrl = `https://${distribution.distributionDomainName}`;
 
+    backendFunction.addEnvironment("CLOUD_FRONT_URL", cloudFrontUrl);
+
     const userPoolClient = userPool.addClient("UserPoolClient", {
       userPoolClientName: "sample-edge-auth-client",
       generateSecret: false,
@@ -331,6 +343,7 @@ export class SampleEdgeAuthStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.CUSTOM,
       ...backendMethodOptions,
     });
+    apiResource.addMethod("OPTIONS", backendLambdaIntegration, backendMethodOptions);
 
     const pingResource = apiResource.addResource("ping");
     pingResource.addMethod("GET", backendLambdaIntegration, {
@@ -338,6 +351,7 @@ export class SampleEdgeAuthStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.CUSTOM,
       ...backendMethodOptions,
     });
+    pingResource.addMethod("OPTIONS", backendLambdaIntegration, backendMethodOptions);
 
     // ===========================================
     // 3.2 SSM Parameter Store の定義（スタックのデプロイ先リージョン）
